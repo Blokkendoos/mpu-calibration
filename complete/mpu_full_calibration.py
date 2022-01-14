@@ -3,12 +3,12 @@
 # Author: Joshua Hrisko
 ######################################################
 #
-# This code reads data from the MPU6050 and HMC5883 board
-# (respectively accelerometer/gyroscope, magnetometer)
+# This code reads data from the MPU9250/MPU9265 board
+# (MPU6050 - accel/gyro, AK8963 - mag)
 # and solves for calibration coefficients for the
 # accelerometer, gyroscope, and magnetometer using
 # various methods with the IMU attached to a 3D-cube
-# (MPU6050/HMC5883 + calibration block)
+# (MPU9250 + calibration block)
 # --- The calibration coefficients are then saved to
 # --- a local .csv file, which can be loaded upon
 # --- the next run of the program
@@ -16,10 +16,10 @@
 #
 ######################################################
 import time
-import numpy as np
 import csv
+import math
+import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
 
 from mpu6050 import MPU6050
 from hmc5883 import HMC5883
@@ -168,7 +168,7 @@ def mpu_plot_test():
     axs[3].set_theta_zero_location("N")  # set north to top of plot
     axs[3].set_theta_direction(-1)  # set rotation N->E->S->W
     axs[3].set_title('Magnetometer Heading')  # polar plot title
-    axs[0].set_title('Calibrated MPU6050 Time Series Plot')  # imu time series title
+    axs[0].set_title('Calibrated MPU Time Series Plot')  # imu time series title
     fig.canvas.draw()  # draw axes
 
     # Pre-allocate plot vectors
@@ -185,9 +185,9 @@ def mpu_plot_test():
         elif ii in range(6, 9):  # mag pre-allocation
             jj = ii-6
             line_jj, = axs[2].plot(np.arange(0, plt_pts), dummy_y_vals,
-                                   label='$'+mpu_labels[ii]+'$', color=plt.cm.tab10(ii))
+                                   label='$' + mpu_labels[ii] + '$', color=plt.cm.tab10(ii))
             line_ii, = axs[3].plot(dummy_y_vals, dummy_y_vals,
-                                   label='$'+mag_cal_axes[jj]+'$-Axis Heading',
+                                   label='$' + mag_cal_axes[jj] + '$-Axis Heading',
                                    color=plt.cm.tab20b(int(jj*4)),
                                    linestyle='', marker='o', markersize=3)
             lines.append(line_jj)
@@ -200,7 +200,7 @@ def mpu_plot_test():
 
     # Real-Time Plot Update Loop
     ii_iter = 0  # plot update iteration counter
-    cal_rot_indicies = [[6, 7], [7, 8], [6, 8]]  # heading indices
+    cal_rot_indices = [[6, 7], [7, 8], [6, 8]]  # heading indices
     while True:
         try:
             ax, ay, az = mpu.get_accel_data()
@@ -224,20 +224,21 @@ def mpu_plot_test():
                     axs[1].draw_artist(lines[ii])  # update gyro plot
                 if ii in range(6, 9):
                     jj = ii-6  # index offsetted to 0-2
-                    x = np.array(mpu_array[:, cal_rot_indicies[jj][0]])  # raw x-variable
-                    y = np.array(mpu_array[:, cal_rot_indicies[jj][1]])  # raw y-variable
-                    x_prime = x - cal_offsets[cal_rot_indicies[jj][0]]  # x-var for heading
-                    y_prime = y - cal_offsets[cal_rot_indicies[jj][1]]  # y-var for heading
+                    x = np.array(mpu_array[:, cal_rot_indices[jj][0]])  # raw x-variable
+                    y = np.array(mpu_array[:, cal_rot_indices[jj][1]])  # raw y-variable
+                    x_prime = x - cal_offsets[cal_rot_indices[jj][0]]  # x-var for heading
+                    y_prime = y - cal_offsets[cal_rot_indices[jj][1]]  # y-var for heading
                     x_prime[np.isnan(x)] = np.nan
                     y_prime[np.isnan(y)] = np.nan
-                    r_var = np.sqrt(np.power(x_prime, 2.0) + np.power(y_prime, 2.0))  # radius vector
+                    # r_var = np.sqrt(np.power(x_prime, 2.0) + np.power(y_prime, 2.0))  # radius vector
+                    r_var = math.hypot(x_prime, y_prime)  # radius vector
                     theta = np.arctan2(-y_prime, x_prime)  # angle vector for heading
-                    lines[int(ii+jj)].set_ydata(mpu_array[:, ii] -
-                                                cal_offsets[cal_rot_indicies[jj][0]])  # update mag data
-                    # lines[int(ii+jj+1)].set_data(x_prime, y_prime)  # update heading data
+                    lines[int(ii + jj)].set_ydata(mpu_array[:, ii] -
+                                                  cal_offsets[cal_rot_indices[jj][0]])  # update mag data
+                    # lines[int(ii + jj + 1)].set_data(x_prime, y_prime)  # update heading data
                     lines[int(ii + jj + 1)].set_data(theta, r_var)
-                    axs[2].draw_artist(lines[int(ii+jj)])  # update mag plot
-                    axs[3].draw_artist(lines[int(ii+jj+1)])  # update heading plot
+                    axs[2].draw_artist(lines[int(ii + jj)])  # update mag plot
+                    axs[3].draw_artist(lines[int(ii + jj + 1)])  # update heading plot
             [axs[tt].draw_artist(ax_legs[tt]) for tt in range(0, len(ax_legs))]  # update legends
             [fig.canvas.blit(axs[tt].bbox) for tt in range(0, len(ax_legs))]  # update axes
             fig.canvas.flush_events()  # flush blit events
@@ -257,7 +258,7 @@ if __name__ == '__main__':
                   'w_x', 'w_y', 'w_z',
                   ['m_x', 'm_x0'], ['m_y', 'm_y0'], ['m_z', 'm_z0']]
     mag_cal_axes = ['z', 'y', 'x']  # axis order being rotated for mag cal
-    cal_filename = 'mpu6050_cal_params.csv'  # filename for saving calib coeffs
+    cal_filename = 'mpu_cal_params.csv'  # filename for saving calib coeffs
     cal_size = 200  # how many points to use for calibration averages
     cal_offsets = np.array([[], [], [],
                             0.0, 0.0, 0.0,
@@ -269,12 +270,16 @@ if __name__ == '__main__':
         print("-" * 50)
         input("Press Enter to Start The Calibration Procedure")
         time.sleep(1)
+
         gyro_offsets = gyro_cal()  # calibrate gyro offsets under stable conditions
         cal_offsets[3:6] = gyro_offsets
+
         mpu_offsets = accel_cal()  # calibrate accel offsets
         cal_offsets[0:3] = mpu_offsets
+
         ak_offsets = mag_cal()  # calibrate mag offsets
         cal_offsets[6:] = ak_offsets
+
         # save calibration coefficients to file
         with open(cal_filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile, delimiter=',')
@@ -292,16 +297,18 @@ if __name__ == '__main__':
             iter_ii = 0
             for row in reader:
                 if len(row) > 2:
-                    row_vals = [float(ii) for ii in row[int((len(row)/2)+1):]]
+                    row_vals = [float(ii) for ii in row[int((len(row)/2) + 1):]]
                     cal_offsets[iter_ii] = row_vals
                 else:
                     cal_offsets[iter_ii] = float(row[1])
                 iter_ii += 1
+
     # print out offsets for each sensor
     print("-" * 50)
     print('Offsets:')
     for param_ii, param in enumerate(cal_labels):
         print('\t{0}: {1}'.format(param, cal_offsets[param_ii]))
-    print("-" * 50)
+
     # real-time plotter for validation
+    print("-" * 50)
     mpu_plot_test()  # real-time plot of mpu calibratin verification
