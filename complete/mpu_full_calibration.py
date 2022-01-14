@@ -24,67 +24,9 @@ import matplotlib.pyplot as plt
 from mpu6050 import MPU6050
 from hmc5883 import HMC5883
 
-
-# Gyro calibration (Steady)
-def gyro_cal():
-    print("-" * 50)
-    print('Gyro Calibrating - Keep the IMU Steady')
-    [mpu.get_gyro_data() for ii in range(0, cal_size)]  # clear buffer between readings
-    mpu_array = []  # imu array for gyro vals
-    gyro_offsets = [0.0, 0.0, 0.0]  # gyro offset vector
-    while True:
-        try:
-            wx, wy, wz = mpu.get_gyro_data()
-        except:
-            continue
-
-        mpu_array.append([wx, wy, wz])  # gyro vector append
-        if np.shape(mpu_array)[0] == cal_size:
-            for qq in range(0, 3):
-                gyro_offsets[qq] = np.mean(np.array(mpu_array)[:, qq])  # calc gyro offsets
-            break
-    print('Gyro Calibration Complete')
-    return gyro_offsets  # return gyro coeff offsets
-
-
-# Accel Calibration (gravity)
-def accel_fit(x_input, m_x, b):
-    return (m_x * x_input) + b  # fit equation for accel calibration
-
-
-def accel_cal():
-    print("-" * 50)
-    print("Accelerometer Calibration")
-    mpu_offsets = [[], [], []]  # offset array to be printed
-    axis_vec = ['z', 'y', 'x']  # axis labels
-    cal_directions = ["upward", "downward", "perpendicular to gravity"]  # direction for IMU cal
-    cal_indices = [2, 1, 0]  # axis indices
-    for qq, ax_qq in enumerate(axis_vec):
-        ax_offsets = [[], [], []]
-        print("-" * 50)
-        for direc_ii, direc in enumerate(cal_directions):
-            input("-" * 8 + " Press Enter and Keep IMU Steady to Calibrate the Accelerometer with the -" +
-                  ax_qq + "-axis pointed " + direc)
-            [mpu.get_accel_data() for ii in range(0, cal_size)]  # clear buffer between readings
-            mpu_array = []
-            while len(mpu_array) < cal_size:
-                try:
-                    ax, ay, az = mpu.get_accel_data()
-                    mpu_array.append([ax, ay, az])  # append to array
-                except:
-                    continue
-            ax_offsets[direc_ii] = np.array(mpu_array)[:, cal_indices[qq]]  # offsets for direction
-
-        # Use three calibrations (+1g, -1g, 0g) for linear fit
-        popts, _ = curve_fit(accel_fit, np.append(np.append(ax_offsets[0],
-                                                  ax_offsets[1]), ax_offsets[2]),
-                             np.append(np.append(1.0 * np.ones(np.shape(ax_offsets[0])),
-                                       -1.0 * np.ones(np.shape(ax_offsets[1]))),
-                                       0.0 * np.ones(np.shape(ax_offsets[2]))),
-                             maxfev=10000)
-        mpu_offsets[cal_indices[qq]] = popts  # place slope and intercept in offset array
-    print('Accelerometer Calibrations Complete')
-    return mpu_offsets
+from accel_calibration import accel_cal
+from gyro_calibration import gyro_cal
+from mag_calibration import mag_cal
 
 
 # Mag Calibration Fitting
@@ -106,43 +48,6 @@ def outlier_removal(x_ii, y_ii):
         y_ii[y_outliers] = np.nan  # null outlier
         x_ii[y_outliers] = np.nan  # null outlier
     return x_ii, y_ii
-
-
-def mag_cal():
-    print("-" * 50)
-    print("Magnetometer Calibration")
-    cal_rot_indices = [[0, 1], [1, 2], [0, 2]]  # indices of heading for each axis
-    mag_cal_rotation_vec = []  # variable for calibration calculations
-    for qq, ax_qq in enumerate(mag_cal_axes):
-        input("-" * 8 + " Press Enter and Start Rotating the IMU Around the "+ax_qq+"-axis")
-        print("\t When Finished, Press CTRL+C")
-        mag_array = []
-        t0 = time.time()
-        while True:
-            try:
-                mx, my, mz = mag.read()
-            except KeyboardInterrupt:
-                break
-            except:
-                continue
-            mag_array.append([mx, my, mz])  # mag array
-        mag_array = mag_array[20:]  # throw away first few points (buffer clearing)
-        mag_cal_rotation_vec.append(mag_array)  # calibration array
-        print("Sample Rate: {0:2.0f} Hz".format(len(mag_array)/(time.time()-t0)))
-
-    mag_cal_rotation_vec = np.array(mag_cal_rotation_vec)  # make numpy array
-    ak_fit_coeffs = []  # mag fit coefficient vector
-    indices_to_save = [0, 0, 1]  # indices to save as offsets
-    for mag_ii, mags in enumerate(mag_cal_rotation_vec):
-        mags = np.array(mags)  # mag numpy array
-        x, y = (mags[:, cal_rot_indices[mag_ii][0]],
-                mags[:, cal_rot_indices[mag_ii][1]])  # sensors to analyze
-        x, y = outlier_removal(x, y)  # outlier removal
-        y_0 = (np.nanmax(y)+np.nanmin(y))/2.0  # y-offset
-        x_0 = (np.nanmax(x)+np.nanmin(x))/2.0  # x-offset
-        ak_fit_coeffs.append([x_0, y_0][indices_to_save[mag_ii]])  # append to offset
-
-    return ak_fit_coeffs
 
 
 # Plot Real-Time Values to Test
