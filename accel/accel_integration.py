@@ -3,51 +3,36 @@
 # Author: Joshua Hrisko
 ######################################################
 #
-# This code reads data from the MPU9250/MPU9265 board
-# (MPU6050 - accel/gyro, AK8963 - mag)
+# This code reads data from the MPU6050 board
+# (accelerometer/gyroscope)
 # and solves for calibration coefficients for the
 # accelerometer
 #
 #
 ######################################################
-#
-# wait 5-sec for IMU to connect
-import time,sys
-sys.path.append('../')
-t0 = time.time()
-start_bool = False # if IMU start fails - stop calibration
-while time.time()-t0<5:
-    try: 
-        from mpu9250_i2c import *
-        start_bool = True
-        break
-    except:
-        continue
+import time
 import numpy as np
-import csv,datetime
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.integrate import cumtrapz
 from scipy import signal
 
-time.sleep(2) # wait for MPU to load and settle
-# 
-#####################################
-# Accel Calibration (gravity)
-#####################################
-#
-def accel_fit(x_input,m_x,b):
-    return (m_x*x_input)+b # fit equation for accel calibration
-#
+from hmc5883 import HMC5883
+from mpu6050 import MPU6050
+
+
+def accel_fit(x_input, m_x, b):
+    return (m_x*x_input)+b  # fit equation for accel calibration
+
+
 def get_accel():
-    ax,ay,az,_,_,_ = mpu6050_conv() # read and convert accel data
+    ax, ay, az = mpu.get_accel_data()
     return ax, ay, az
 
 
 def accel_cal():
     print("-" * 50)
     print("Accelerometer Calibration")
-            [mpu6050_conv() for ii in range(0,cal_size)] # clear buffer between readings
     mpu_offsets = [[], [], []]  # offset array to be printed
     axis_vec = ['z', 'y', 'x']  # axis labels
     cal_directions = ["upward", "downward", "perpendicular to gravity"]  # direction for IMU cal
@@ -58,6 +43,7 @@ def accel_cal():
         for direc_ii, direc in enumerate(cal_directions):
             input("-" * 8 + " Press Enter and Keep IMU Steady to Calibrate the Accelerometer with the -" +
                   ax_qq + "-axis pointed " + direc)
+            [mpu.get_accel_data() for ii in range(0, cal_size)]  # clear buffer between readings
             mpu_array = []
             while len(mpu_array) < cal_size:
                 try:
@@ -98,8 +84,8 @@ def imu_integrator():
         loop_bool = False
         while True:
             try:
-                ax,ay,az,wx,wy,wz = mpu6050_conv() # read and convert mpu6050 data
-                mx,my,mz = AK8963_conv() # read and convert AK8963 magnetometer data
+                ax, ay, az, wx, wy, wz = mpu.get_accel_data()  # accelerometer data
+                mx, my, mz = hmc.read()  # magnetometer data
                 t_array.append(time.time()-t0)
                 data_array = [ax, ay, az, wx, wy, wz, mx, my, mz]
                 accel_array.append(accel_fit(data_array[data_indx],
@@ -134,21 +120,22 @@ def imu_integrator():
                     color=plt.cm.Set1(1), linewidth=2.5)
         axs[2].plot(t_array, dist_array,
                     label="$d_"+mpu_labels[data_indx].split("_")[1]+"$",
-        axs[0].set_title("MPU9250 Accelerometer Integration",fontsize=18)
                     color=plt.cm.Set1(2), linewidth=2.5)
         [axs[ii].legend() for ii in range(0, len(axs))]
         axs[0].set_ylabel('Acceleration [m$\cdot$s$^{-2}$]', fontsize=16)  # noqa: W605
         axs[1].set_ylabel('Velocity [m$\cdot$s$^{-1}$]', fontsize=16)  # noqa: W605
         axs[2].set_ylabel('Displacement [m]', fontsize=16)
         axs[2].set_xlabel('Time [s]', fontsize=18)
+        axs[0].set_title("MPU6050 Accelerometer Integration", fontsize=18)
         plt.pause(0.01)
         plt.savefig("accel_veloc_displace_integration.png", dpi=300,
                     bbox_inches='tight', facecolor="#FCFCFC")
 
 
 if __name__ == '__main__':
-    if not start_bool:
-        print("IMU not Started - Check Wiring and I2C")
+    mpu = MPU6050()  # IMU (Accelerometer, Gyroscope)
+    hmc = HMC5883()  # Magnetometer
+
     # Accelerometer Gravity Calibration
     mpu_labels = ['a_x', 'a_y', 'a_z']  # gyro labels for plots
     cal_size = 1000  # number of points to use for calibration

@@ -3,48 +3,27 @@
 # Author: Joshua Hrisko
 ######################################################
 #
-# This code reads data from the MPU9250/MPU9265 board
-# (MPU6050 - accel/gyro, AK8963 - mag)
+# This code reads data from the MPU6050 board,
+# (accelerometer/gyroscope)
 # and solves for calibration coefficients for the
 # accelerometer
 #
 #
 ######################################################
-#
-# wait 5-sec for IMU to connect
-import time,sys
-sys.path.append('../')
-t0 = time.time()
-start_bool = False # if IMU start fails - stop calibration
-while time.time()-t0<5:
-    try: 
-        from mpu9250_i2c import *
-        start_bool = True
-        break
-    except:
-        continue
 import numpy as np
-import csv,datetime
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit 
+from scipy.optimize import curve_fit
 
-time.sleep(2) # wait for MPU to load and settle
-# 
-#####################################
-# Accel Calibration (gravity)
-#####################################
-#
-def accel_fit(x_input,m_x,b):
-    return (m_x*x_input)+b # fit equation for accel calibration
-#
-def get_accel():
-    ax,ay,az,_,_,_ = mpu6050_conv() # read and convert accel data
-    return ax,ay,az
-    
+from mpu6050 import MPU6050
+
+
+def accel_fit(x_input, m_x, b):
+    return (m_x * x_input) + b  # fit equation for accel calibration
+
+
 def accel_cal():
     print("-" * 50)
     print("Accelerometer Calibration")
-            [mpu6050_conv() for ii in range(0,cal_size)] # clear buffer between readings
     mpu_offsets = [[], [], []]  # offset array to be printed
     axis_vec = ['z', 'y', 'x']  # axis labels
     cal_directions = ["upward", "downward", "perpendicular to gravity"]  # direction for IMU cal
@@ -55,6 +34,7 @@ def accel_cal():
         for direc_ii, direc in enumerate(cal_directions):
             input("-" * 8 + " Press Enter and Keep IMU Steady to Calibrate the Accelerometer with the -" +
                   ax_qq + "-axis pointed " + direc)
+            [mpu.get_accel_data() for ii in range(0, cal_size)]  # clear buffer between readings
             mpu_array = []
             while len(mpu_array) < cal_size:
                 try:
@@ -77,9 +57,7 @@ def accel_cal():
 
 
 if __name__ == '__main__':
-    if not start_bool:
-        print("IMU not Started - Check Wiring and I2C")
-    else:
+    mpu = MPU6050(0x68)  # IMU (Accelerometer, Gyroscope)
 
     cal_size = 1000  # number of points to use for calibration
 

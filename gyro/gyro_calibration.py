@@ -3,49 +3,28 @@
 # Author: Joshua Hrisko
 ######################################################
 #
-# This code reads data from the MPU9250/MPU9265 board
-# (MPU6050 - accel/gyro, AK8963 - mag)
+# This code reads data from the MPU6050 board
+# (accelerometer/gyroscope)
 # and solves for calibration coefficients for the
 # gyroscope
 #
 #
 ######################################################
-#
-# wait 5-sec for IMU to connect
-import time,sys
-sys.path.append("../")
-t0 = time.time()
-start_bool = False # if IMU start fails - stop calibration
-while time.time()-t0<5:
-    try: 
-        from mpu9250_i2c import *
-        start_bool = True
-        break
-    except:
-        continue
 import numpy as np
-import csv,datetime
 import matplotlib.pyplot as plt
 
-time.sleep(2) # wait for MPU to load and settle
-# 
-#####################################
-# Gyro calibration (Steady)
-#####################################
-#
-def get_gyro():
-    _,_,_,wx,wy,wz = mpu6050_conv() # read and convert gyro data
-    return wx,wy,wz
+from mpu6050 import MPU6050
+
 
 def gyro_cal():
     print("-" * 50)
     print('Gyro Calibrating - Keep the IMU Steady')
-    [get_gyro() for ii in range(0,cal_size)] # clear buffer before calibration
+    [mpu.get_gyro_data() for ii in range(0, cal_size)]  # clear buffer before calibration
     mpu_array = []
     gyro_offsets = [0.0, 0.0, 0.0]
     while True:
         try:
-            wx,wy,wz = get_gyro() # get gyro vals
+            wx, wy, wz = mpu.get_gyro_data()  # get gyro values
         except:
             continue
 
@@ -59,9 +38,7 @@ def gyro_cal():
 
 
 if __name__ == '__main__':
-    if not start_bool:
-        print("IMU not Started - Check Wiring and I2C")
-    else:
+    mpu = MPU6050(0x68)  # IMU (Accelerometer, Gyroscope)
 
     cal_size = 500  # points to use for calibration
 

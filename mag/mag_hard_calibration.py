@@ -3,32 +3,19 @@
 # Author: Joshua Hrisko
 ######################################################
 #
-# This code reads data from the MPU9250/MPU9265 board
-# (MPU6050 - accel/gyro, AK8963 - mag)
+# This code reads data from the HMC5883 board
+# (magnetometer)
 # and solves for tje hard iron offset for a
 # magnetometer using a calibration block
 #
 #
-######################################################
-#
-# wait 5-sec for IMU to connect
-import time,sys
-sys.path.append("../")
-t0 = time.time()
-start_bool = False # if IMU start fails - stop calibration
-while time.time()-t0<5:
-    try: 
-        from mpu9250_i2c import *
-        start_bool = True
-        break
-    except:
-        continue
+#####################################################
+import time
+import sys
 import numpy as np
-import csv
 import matplotlib.pyplot as plt
 
-time.sleep(2) # wait for mpu to load
-# 
+from hmc5883 import HMC5883
 
 sys.path.append('../')
 
@@ -65,7 +52,7 @@ def mag_cal():
         t0 = time.time()
         while True:
             try:
-                mx,my,mz = AK8963_conv() # read and convert AK8963 magnetometer data
+                mx, my, mz = mag.read_magnetometer()
             except KeyboardInterrupt:
                 break
             except:
@@ -125,9 +112,7 @@ def mag_cal_plot():
 
 
 if __name__ == '__main__':
-    if not start_bool:
-        print("IMU not Started - Check Wiring and I2C")
-    else:
+    mag = HMC5883()  # Magnetometer
 
     mag_labels = ['m_x', 'm_y', 'm_z']  # mag labels for plots
     mag_cal_axes = ['z', 'y', 'x']  # axis order being rotated

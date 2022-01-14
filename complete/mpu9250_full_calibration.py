@@ -3,48 +3,38 @@
 # Author: Joshua Hrisko
 ######################################################
 #
-# This code reads data from the MPU9250/MPU9265 board
-# (MPU6050 - accel/gyro, AK8963 - mag)
+# This code reads data from the MPU6050 and HMC5883 board
+# (respectively accelerometer/gyroscope, magnetometer)
 # and solves for calibration coefficients for the
 # accelerometer, gyroscope, and magnetometer using
 # various methods with the IMU attached to a 3D-cube
-# (MPU9250 + calibration block)
+# (MPU6050/HMC5883 + calibration block)
 # --- The calibration coefficients are then saved to
 # --- a local .csv file, which can be loaded upon
 # --- the next run of the program
 #
 #
 ######################################################
-#
-# wait 5-sec for IMU to connect
 import time
-t0 = time.time()
-start_bool = False # if IMU start fails - stop calibration
-while time.time()-t0<5:
-    try: 
-        from mpu9250_i2c import *
-        start_bool = True
-        break
-    except:
-        continue
 import numpy as np
-import csv,datetime
+import csv
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
-time.sleep(2) # wait for mpu to load
-# 
-#####################################
+from mpu6050 import MPU6050
+from hmc5883 import HMC5883
+
+
 # Gyro calibration (Steady)
 def gyro_cal():
     print("-" * 50)
     print('Gyro Calibrating - Keep the IMU Steady')
-    [mpu6050_conv() for ii in range(0,cal_size)] # clear buffer between readings
+    [mpu.get_gyro_data() for ii in range(0, cal_size)]  # clear buffer between readings
     mpu_array = []  # imu array for gyro vals
     gyro_offsets = [0.0, 0.0, 0.0]  # gyro offset vector
     while True:
         try:
-            _,_,_,wx,wy,wz = mpu6050_conv() # read and convert mpu6050 data
+            wx, wy, wz = mpu.get_gyro_data()
         except:
             continue
 
@@ -58,10 +48,6 @@ def gyro_cal():
 
 
 # Accel Calibration (gravity)
-def get_accel():
-    ax,ay,az,_,_,_ = mpu6050_conv() # read and convert accel data
-    return ax,ay,az
-    
 def accel_fit(x_input, m_x, b):
     return (m_x * x_input) + b  # fit equation for accel calibration
 
@@ -69,7 +55,6 @@ def accel_fit(x_input, m_x, b):
 def accel_cal():
     print("-" * 50)
     print("Accelerometer Calibration")
-            [mpu6050_conv() for ii in range(0,cal_size)] # clear buffer between readings
     mpu_offsets = [[], [], []]  # offset array to be printed
     axis_vec = ['z', 'y', 'x']  # axis labels
     cal_directions = ["upward", "downward", "perpendicular to gravity"]  # direction for IMU cal
@@ -80,6 +65,7 @@ def accel_cal():
         for direc_ii, direc in enumerate(cal_directions):
             input("-" * 8 + " Press Enter and Keep IMU Steady to Calibrate the Accelerometer with the -" +
                   ax_qq + "-axis pointed " + direc)
+            [mpu.get_accel_data() for ii in range(0, cal_size)]  # clear buffer between readings
             mpu_array = []
             while len(mpu_array) < cal_size:
                 try:
@@ -134,7 +120,7 @@ def mag_cal():
         t0 = time.time()
         while True:
             try:
-                mx,my,mz = AK8963_conv() # read and convert AK8963 magnetometer data
+                mx, my, mz = mag.read()
             except KeyboardInterrupt:
                 break
             except:
@@ -217,8 +203,9 @@ def mpu_plot_test():
     cal_rot_indicies = [[6, 7], [7, 8], [6, 8]]  # heading indices
     while True:
         try:
-            ax,ay,az,wx,wy,wz = mpu6050_conv() # read and convert mpu6050 data
-            mx,my,mz = AK8963_conv() # read and convert AK8963 magnetometer data
+            ax, ay, az = mpu.get_accel_data()
+            wx, wy, wz = mpu.get_gyro_data()
+            mx, my, mz = mag.read()
         except:
             continue
 
@@ -259,8 +246,8 @@ def mpu_plot_test():
 
 
 if __name__ == '__main__':
-    if not start_bool:
-        print("IMU not Started - Check Wiring and I2C")
+    mpu = MPU6050()  # IMU (Accelerometer, Gyroscope)
+    mag = HMC5883()  # Magnetometer
 
     # input parameters
     mpu_labels = ['a_x', 'a_y', 'a_z',
@@ -270,6 +257,7 @@ if __name__ == '__main__':
                   'w_x', 'w_y', 'w_z',
                   ['m_x', 'm_x0'], ['m_y', 'm_y0'], ['m_z', 'm_z0']]
     mag_cal_axes = ['z', 'y', 'x']  # axis order being rotated for mag cal
+    cal_filename = 'mpu6050_cal_params.csv'  # filename for saving calib coeffs
     cal_size = 200  # how many points to use for calibration averages
     cal_offsets = np.array([[], [], [],
                             0.0, 0.0, 0.0,
@@ -298,7 +286,6 @@ if __name__ == '__main__':
                     writer.writerow(cal_labels[param_ii] +
                                     [ii for ii in cal_offsets[param_ii]])
     else:
-        cal_filename = 'mpu9250_cal_params.csv' # filename for saving calib coeffs
         # read calibration coefficients from file
         with open(cal_filename, 'r', newline='') as csvfile:
             reader = csv.reader(csvfile, delimiter=',')
