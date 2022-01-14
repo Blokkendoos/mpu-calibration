@@ -1,16 +1,19 @@
-# MPU9250 Calibration using Python and a Raspberry Pi Computer
-Calibration procedure for the MPU9250's accelerometer, gyroscope, and magnetometer using Python and a Raspberry Pi Computer.
+# MPU6050 Calibration using Python and a Raspberry Pi Computer
+Calibration procedure for the MPU6050's accelerometer and gyroscope using Python and a Raspberry Pi Computer.
+Includes calibration for the HMC5883 magnetometer.
 
 Full tutorials at the following links:
 - [Calibration of an Inertial Measurement Unit (IMU) with Raspberry Pi - Part I](https://makersportal.com/blog/calibration-of-an-inertial-measurement-unit-with-raspberry-pi)
 - [Gyroscope and Accelerometer Calibration with Raspberry Pi](https://makersportal.com/blog/calibration-of-an-inertial-measurement-unit-imu-with-raspberry-pi-part-ii)
 - [Calibration of a Magnetometer with Raspberry Pi](https://makersportal.com/blog/calibration-of-a-magnetometer-with-raspberry-pi)
 
+### - TODO -
+Update MPU9250 images and references to MPU6050
+___
 
 ### - Wiring Diagram - 
 
-Power is supplied to the MPU9250 via the 3.3V/GND pins on the Raspberry Pi computer. The MPU9250 board communicates with the RPi over its Inter-Integrated Circuit (I<sup>2</sup>C) pins, labeled SDA/SCL on both the RPi and MPU9265 boards. On the RPi, SDA is located on hardware pin 3, and SCL is located on hardware pin 5. 
-![Wiring diagram of MPU9250 to RPI4](./images/mpu9250_raspberry_pi_4_wiring_diagram.png)
+Power is supplied to the MPU6050 via the 3.3V/GND pins on the Raspberry Pi computer. The MPU board communicates with the RPi over its Inter-Integrated Circuit (I<sup>2</sup>C) pins, labeled SDA/SCL on both the RPi and MPU boards. On the RPi, SDA is located on hardware pin 3, and SCL is located on hardware pin 5. 
 ___
 ### - Python Library Installs and IMU Tests - 
 Install the following Python packages onto the Raspberry Pi:
@@ -34,7 +37,7 @@ The calibration procedure uses a uniform cube to calibrate each sensor on the IM
 - Accelerometer: calibrate under graviation for each axis
 - Magnetometer: calibrate under 360 degree rotation for each axis
 
-Keeping in mind the coordinate reference for the MPU9250:
+Keeping in mind the coordinate reference for the MPU6050:
 
 ![MPU9250 Coordinate References](./images/mpu6050_ak8963_drawing_coordinates.png)
 
@@ -42,7 +45,7 @@ ___
 ### - Full Calibration and Real-Time Output -
 
 The plot below is an example output of the following script:
-- mpu9250_full_calibration.py
+- mpu_full_calibration.py
 
 ![MPU9250 Full Output](./images/mpu9250_real_time_plot_white.jpg)
 
