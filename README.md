@@ -37,9 +37,10 @@ The calibration procedure uses a uniform cube to calibrate each sensor on the IM
 - Accelerometer: calibrate under graviation for each axis
 - Magnetometer: calibrate under 360 degree rotation for each axis
 
-Keeping in mind the coordinate reference for the MPU6050:
+Keeping in mind the coordinate reference for the MPU6050 and HMC5883:
 
-![MPU9250 Coordinate References](./images/mpu6050_ak8963_drawing_coordinates.png)
+![MPU6050 Coordinate References](./images/mpu6050_orientation.jpg)
+![HMC5883 Coordinate References](./images/hmc5883_orientation.jpg)
 
 ___
 ### - Full Calibration and Real-Time Output -
