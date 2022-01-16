@@ -67,7 +67,7 @@ def accel_cal():
 
 
 def imu_integrator():
-    # main Loop to Integrate IMU
+    # main loop to integrate IMU
     data_indx = 1  # index of variable to integrate
     dt_stop = 5  # seconds to record and integrate
 
@@ -76,7 +76,7 @@ def imu_integrator():
     fig, axs = plt.subplots(3, 1, figsize=(12, 9))
     break_bool = False
     while True:
-        # reading and Printing IMU values
+        # reading and printing IMU values
         accel_array, t_array = [], []
         print("Starting Data Acquisition")
         [axs[ii].clear() for ii in range(0, 3)]
@@ -98,28 +98,28 @@ def imu_integrator():
             if time.time()-t0 > dt_stop:
                 print("Data Acquisition Stopped")
                 break
-
         if break_bool:
             break
-        # Signal Filtering
+
+        # signal filtering
         Fs_approx = len(accel_array)/dt_stop
         b_filt, a_filt = signal.butter(4, 5, 'low', fs=Fs_approx)
         accel_array = signal.filtfilt(b_filt, a_filt, accel_array)
         accel_array = np.multiply(accel_array, 9.80665)
-        # Print Sample Rate and Accel
-        # Integration Value
+
+        # print Sample Rate and Accel Integration Value
         print("Sample Rate: {0:2.0f}Hz".format(len(accel_array)/dt_stop))
         veloc_array = np.append(0.0, cumtrapz(accel_array, x=t_array))
         dist_approx = np.trapz(veloc_array, x=t_array)
         dist_array = np.append(0.0, cumtrapz(veloc_array, x=t_array))
         print("Displace in y-dir: {0:2.2f}m".format(dist_approx))
-        axs[0].plot(t_array, accel_array, label="$"+mpu_labels[data_indx]+"$",
+        axs[0].plot(t_array, accel_array, label="$"+mpu_labels[data_indx] + "$",
                     color=plt.cm.Set1(0), linewidth=2.5)
         axs[1].plot(t_array, veloc_array,
-                    label="$v_"+mpu_labels[data_indx].split("_")[1]+"$",
+                    label="$v_"+mpu_labels[data_indx].split("_")[1] + "$",
                     color=plt.cm.Set1(1), linewidth=2.5)
         axs[2].plot(t_array, dist_array,
-                    label="$d_"+mpu_labels[data_indx].split("_")[1]+"$",
+                    label="$d_"+mpu_labels[data_indx].split("_")[1] + "$",
                     color=plt.cm.Set1(2), linewidth=2.5)
         [axs[ii].legend() for ii in range(0, len(axs))]
         axs[0].set_ylabel('Acceleration [m$\cdot$s$^{-2}$]', fontsize=16)  # noqa: W605
@@ -140,12 +140,12 @@ if __name__ == '__main__':
     mpu_labels = ['a_x', 'a_y', 'a_z']  # gyro labels for plots
     cal_size = 1000  # number of points to use for calibration
     old_vals_bool = True  # True uses values from another calibration
-    if not old_vals_bool:
-        accel_coeffs = accel_cal()  # grab accel coefficients
-    else:
+    if old_vals_bool:
         accel_coeffs = [np.array([0.9978107, -0.19471673]),
                         np.array([0.99740193, -0.56129248]),
                         np.array([0.9893495, 0.20589886])]
+    else:
+        accel_coeffs = accel_cal()  # grab accel coefficients
 
     # record new data
     data = np.array([get_accel() for ii in range(0, cal_size)])  # new values

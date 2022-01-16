@@ -17,8 +17,6 @@ import matplotlib.pyplot as plt
 
 from hmc5883 import HMC5883
 
-sys.path.append('../')
-
 
 def outlier_removal(x_ii, y_ii):
     x_diff = np.append(0.0, np.diff(x_ii))  # looking for outliers
